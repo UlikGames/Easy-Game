@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Top Oyunu</title>
+	<link rel="stylesheet" type="text/css" href="css/style.css">
+</head>
+<body>
+	<canvas id="canvas"></canvas>
+	<audio preload="true" id="deyme sesi">
+		<source src="hit.mp3" />
+	</audio>
+
+	<script type="text/javascript">
+
+	window.animasyonFrameIstegi = (function(){
+
+	return window.requestAnimationFrame 
+	window.webkitRequestAnimationFrame
+	window.mozRequestAnimationFrame
+	window.oRequestAnimationFrame
+	window.msRequestAnimationFrame || 
+	function ( callback ){
+		return window.setTimeout(callback, 1000 / 60);
+		};
+	})();
+
+
+window.animasyonFrameIptal = (function(){
+	return window.cancelAnimationFrame
+	window.webkitCancelRequestAnimationFrame 
+	window.mozCancelRequestAnimationFrame
+	window.oCancelRequestAnimationFrame 
+	window.msCancelRequestAnimationFrame
+	clearTimeout
+})();
+
+
+var canvas = document.getElementById("canvas"),
+	ctx    = canvas.getContext("2d"),
+	G      = window.innerWidth,
+	Y      = window.innerHeight,
+	mouse = {},
+	hissecikler = [],
+	topum = {},
+	cubuk = [2],
+	xaliniz = 0,
+	hiz = 60,
+	deymehissecigi = 20,
+	deymedeyiseni = 0,
+	parcaveziyyeti = {},
+	kivilcimDegiskeni = 1,
+	baslatButon = {},
+	resetButon = {},
+	bitti = 0,
+	res,
+	cubukCarpisma;
+
+	canvas.width  = G;
+	canvas.height = Y;
+
+	canvas.addEventListener("mousemove", mouseHareket, true);
+	canvas.addEventListener("mousedown", butonTiklandi, true);
+
+	carpisma = document.getElementById("deyme sesi");
+
+	topum = {
+		x:50,
+		y:50,
+		r:5,
+		c:"white",
+		xh:4,
+		yh:8,
+
+		ciz: function (){
+			ctx.beginPath();
+			ctx.fillStyle = this.c;
+			ctx.arc(this.x, this.y, this.r, 0, Math.PI*2, false);
+			ctx.fill();
+		}
+	};
+
+	baslatButon = {
+		w: 100,
+		h: 50,
+		x: G/2 - 50,
+		y: Y/2 - 25,
+
+		ciz: function(){
+			ctx.strokeStyle = "white";
+			ctx.lineWidth = "2";
+			ctx.strokeRect(this.x, this.y, this.w, this.h);
+			ctx.font = "18px Arial, sans-serif";
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
+			ctx.fillStyle = "white";
+			ctx.fillText("Start", G/2, Y/2);
+		}
+	};
+
+	resetButon = {
+		w: 100,
+		h: 50,
+		x: G/2 - 50,
+		y: Y/2 - 50,
+
+		ciz: function(){
+			ctx.strokeStyle = "white";
+			ctx.lineWidth = "2";
+			ctx.strokeRect(this.x, this.y, this.w, this.h);
+			ctx.font = "18px Arial, sans-serif";
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
+			ctx.fillStyle = "white";
+			ctx.fillText("Play Again", G/2, Y/2 - 25);
+		}
+	};
+
+	function parcacikOlustur(x, y, m){
+		this.x = x || 0;
+		this.y = y || 0;
+
+		this.radius = 1.2;
+
+		this.xh = -1.5 + Math.random() *3;
+		this.yh = m * Math.random() * 1.5;
+	}
+
+	function hizArttir(){
+		if(xaliniz % 4 == 0){
+			if(Math.abs(topum.xh) < 15){
+				topum.xh += (topum.xh < 0) ? -1 : 1;
+				topum.yh += (topum.yh < 0) ? -2 : 2;
+			}
+		}
+	}
+
+	function Kurek(poz) {
+		this.h = 5;
+		this.w = 150;
+
+		this.x = G/2 - this.w/2;
+		this.y = (poz == "ust") ? 0 : Y - this.h;
+	}
+
+	cubuk.push(new Kurek("asagi"));
+	cubuk.push(new Kurek("ust"));
+
+	function canvasCiz(){
+		ctx.fillStyle = "green";
+		ctx.fillRect(0, 0, G, Y);
+	}
+
+	function ciz(){
+		canvasCiz();
+		for(var i = 0; i<cubuk.length; i++){
+			p = cubuk[i];
+			ctx.fillStyle = "red";
+			ctx.fillRect(p.x, p.y, p.w, p.h);
+		}
+		topum.ciz();
+		guncelle();
+	}
+
+	function animDongu(){
+		res = animasyonFrameIstegi(animDongu)
+		ciz();
+	}
+
+
+	function baslamaEkrani(){
+		ciz();
+		baslatButon.ciz();
+	}
+
+	function guncelle(){
+		skoruGuncelle();
+
+		topum.x = topum.x + topum.xh;
+		topum.y = topum.y + topum.yh;
+
+		if(mouse.x && mouse.y){
+			for(var i = 1; i < cubuk.length; i++){
+				p = cubuk[i];
+				p.x = mouse.x - p.w/2;
+			}
+		}
+
+
+		p1 = cubuk[1];
+		p2 = cubuk[2];
+
+		if(carpismalar(topum, p1)){
+			carpismaEylemi(topum, p1);
+		}else if(carpismalar(topum, p2)){
+			carpismaEylemi(topum, p2);
+		}else{
+
+			if(topum.y + topum.r > Y){
+				topum.y =  Y - topum.r;
+				oyunBitti();
+			}else if(topum.y < 0){
+				topum.y = topum.r;
+				oyunBitti();
+			}
+
+			if(topum.x + topum.r > G){
+				topum.xh = -topum.xh;
+				topum.x = G - topum.r;
+			}else if(topum.x - topum.r < 0){
+				topum.xh = -topum.xh;
+				topum.x = topum.r;
+			}
+		}
+		if(deymedeyiseni == 1){
+			for(var k = 0; k < deymehissecigi; k++){
+				hissecikler.push(new parcacikOlustur(parcaveziyyeti.x, parcaveziyyeti.y, cogalt));
+			}
+		}
+
+
+		parcalariyay();
+
+		deymedeyiseni = 0;
+	}
+
+	function mouseHareket(e){
+		mouse.x = e.pageX; 
+		mouse.y = e.pageY;
+	}
+
+	function carpismalar(b, p){
+		if(b.x + topum.r >= p.x && b.x - topum.r <= p.x + p.w){
+			if(b.y >= (p.y - p.h) && p.y > 0){
+				cubukCarpisma = 1
+				return true;
+			}else if(b.y <= p.h &&  p.y == 0){
+				cubukCarpisma = 2;
+				return true;
+			}else{
+				return false;
+			}
+		}
+	}
+
+function carpismaEylemi(topum, p){
+	topum.yh = -topum.yh;
+
+	if(cubukCarpisma == 1){
+		topum.y = p.y - p.h;
+		parcaveziyyeti.y = topum.y - topum.r;
+		cogalt = -1;
+	}else if(cubukCarpisma == 2){
+		topum.y = p.h + topum.r;
+		parcaveziyyeti.y = topum.y - topum.r;
+		cogalt = 1;
+	}
+
+	xaliniz++;
+	hizArttir();
+	
+	if(carpisma){
+		if(xaliniz > 0){
+			carpisma.pause();
+		}
+			carpisma.currentTime = 0;
+			carpisma.play();
+	}
+	parcaveziyyeti.x = topum.x;
+	deymedeyiseni = 1;
+}
+
+function parcalariyay(){
+	for(var j = 0; j < hissecikler.length; j++){
+		par = hissecikler[j];
+		ctx.beginPath();
+		ctx.fillStyle = "white";
+		if(par.radius > 0){
+			ctx.arc(par.x, par.y, par.radius, 0, Math.PI*2, false);
+		}
+		ctx.fill();
+		par.x += par.xh;
+		par.y += par.yh;
+
+		par.radius = Math.max(par.radius - 0.05, 0.0)
+	}
+}
+
+function skoruGuncelle(){
+	ctx.fillStyle = "white";
+	ctx.font = "16px Arial, sans-serif";
+	ctx.textAlign = "left";
+	ctx.textBaseline = "top";
+	ctx.fillText("point: " + xaliniz, 20, 20);
+
+}
+
+function oyunBitti(){
+	ctx.fillStyle = "white";
+	ctx.font = "20px Arial, sans-serif";
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+	ctx.fillText("Game Over - You scored " + xaliniz + " point!", G/2, Y/2 + 25);
+	animasyonFrameIptal(res);
+	bitti = 1;
+	resetButon.ciz();
+}
+
+function butonTiklandi(e){
+	var mx = e.pageX,
+	    my = e.pageY;
+
+	if(mx >= baslatButon.x && mx <= baslatButon.x + baslatButon.w){
+		animDongu();
+
+		baslatButon = {};
+	}
+	if(bitti == 1){
+		if(mx >= resetButon.x && mx <= resetButon.x + resetButon.w){
+			topum.x = 20;
+			topum.y = 20;
+			xaliniz = 0;
+			topum.xh = 4;
+			topum.yh = 8;
+			animDongu();
+
+			bitti = 0;
+		}
+	}
+
+}
+baslamaEkrani();
+</script>
+</body>
+</html>
